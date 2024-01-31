@@ -8,7 +8,7 @@ const redisClient = Redis.createClient({
 });
 
 const app = express();//create an express application
-const port = 3000;
+const port = 3001;
 
 // Middleware to parse JSON body in requests
 //app.use(express.json());
