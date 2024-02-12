@@ -13,7 +13,7 @@ const redisClient = Redis.createClient({
 });
 
 const app = express();//create an express application
-const port = 3000;
+const port = 3001;
 
 // Middleware to parse JSON body in requests
 //app.use(express.json());
@@ -22,7 +22,7 @@ app.use(cors(options));
 
 app.listen(port,()=>{
     redisClient.connect();//this connects to the redis ddatabase!!!!
-    console.log(`API is listening on port: ${port} - http://localhost:3000/boxes`);//template literal
+    console.log(`API is listening on port: ${port} - http://localhost:3001/boxes`);//template literal
 });//listen for web requests from the frontend and don't stop
 
 // 1 - URL
@@ -51,50 +51,89 @@ app.listen(port,()=>{
 //     res.status(201).send('Box created successfully');
 // });
 
-const orderSchema = {
-    type: "object",
-    properties: {
-      customerName: { type: "string" },
-      items: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            productId: { type: "number" },
-            quantity: { type: "number" },
-          },
-          required: ["productId", "quantity"],
-        },
-      },
-    },
-    required: ["customerName", "items"],
-  };
+//starts here
+
+// const orderSchema = {
+//     type: "object",
+//     properties: {
+//       customerName: { type: "string" },
+//       items: {
+//         type: "array",
+//         items: {
+//           type: "object",
+//           properties: {
+//             productId: { type: "number" },
+//             quantity: { type: "number" },
+//           },
+//           required: ["productId", "quantity"],
+//         },
+//       },
+//     },
+//     required: ["customerName", "items"],
+//   };
   
-  const Ajv = require("ajv");
-  const ajv = new Ajv();
+//   const Ajv = require("ajv");
+//   const ajv = new Ajv();
   
-  app.post("/orders", async (req, res) => {
-    const validate = ajv.compile(orderSchema);
-    const valid = validate(req.body);
+//   app.post("/orders", async (req, res) => {
+//     const validate = ajv.compile(orderSchema);
+//     const valid = validate(req.body);
   
-    if (!valid) {
-      res.status(400).json(validate.errors);
+//     if (!valid) {
+//       res.status(400).json(validate.errors);
+//     } else {
+//       const newOrder = req.body;
+//       // Check if the 'orders' key exists
+//       const ordersExist = await redisClient.exists("orders");
+//       if (ordersExist.arrLen-1 == null) {
+//         newOrder.id = 1;
+//       } else {
+//         // If it doesn't exist, set the id to 1
+//         newOrder.id = parseInt(await redisClient.json.arrLen("orders", "$")) + 1;
+//       }
+//       await redisClient.json.arrAppend("orders", "$", newOrder);
+//       res.json(newOrder);
+//     }
+//   });
+  
+//   app.get("/orders", async (req, res) => {
+//     let orders = await redisClient.json.get("orders", { path: "$" });
+//     res.json(orders[0]);
+//   });
+
+const Schema = require("./schema.json");
+
+const Ajv = require("ajv");
+const ajv = new Ajv();
+
+app.post("/orders", async (req, res) => {
+  const validate = ajv.compile(Schema);
+  const valid = validate(req.body);
+
+  if (!valid) {
+    res.status(400).json(validate.errors);
+  } else {
+    const newOrder = req.body;
+    newOrder.customerId = 1;
+    // Check if the 'orders' key exists
+    const ordersExist = await redisClient.exists("orders");
+    if (ordersExist.arrLen - 1 == null) {
+      // If it doesn't exist, set the id to 1
+      newOrder.orderid = 1;
     } else {
-      const newOrder = req.body;
-      // Check if the 'orders' key exists
-      const ordersExist = await redisClient.exists("orders");
-      if (ordersExist.arrLen-1 == null) {
-        newOrder.id = 1;
-      } else {
-        // If it doesn't exist, set the id to 1
-        newOrder.id = parseInt(await redisClient.json.arrLen("orders", "$")) + 1;
-      }
-      await redisClient.json.arrAppend("orders", "$", newOrder);
-      res.json(newOrder);
+      // If it does exist, set the id to the length of the array + 1
+      newOrder.orderid =
+        parseInt(await redisClient.json.arrLen("orders", "$")) + 1;
     }
+    await redisClient.json.arrAppend("orders", "$", newOrder);
+    res.json(newOrder);
+  }
+});
+
+app.get("/orders", async (req, res) => {
+  let orders = await redisClient.json.get("orders", { path: "$" });
+  orders.forEach((order) => {
+    console.log(order.customerId); // This will log the customerId of each order
   });
-  
-  app.get("/orders", async (req, res) => {
-    let orders = await redisClient.json.get("orders", { path: "$" });
-    res.json(orders[0]);
-  });
+  res.json(orders[0]);
+});
