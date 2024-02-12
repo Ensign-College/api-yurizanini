@@ -13,7 +13,7 @@ const redisClient = Redis.createClient({
 });
 
 const app = express();//create an express application
-const port = 3001;
+const port = 3000;
 
 // Middleware to parse JSON body in requests
 //app.use(express.json());
@@ -22,7 +22,7 @@ app.use(cors(options));
 
 app.listen(port,()=>{
     redisClient.connect();//this connects to the redis ddatabase!!!!
-    console.log(`API is listening on port: ${port} - http://localhost:3000/boxes2`);//template literal
+    console.log(`API is listening on port: ${port} - http://localhost:3000/boxes`);//template literal
 });//listen for web requests from the frontend and don't stop
 
 // 1 - URL
