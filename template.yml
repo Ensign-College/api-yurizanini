@@ -2,23 +2,39 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 
 Resources:
-#  MyLambdaFunction:
-#    Type: 'AWS::Serverless::Function'
-#    Properties:
-#      Handler: index.handler
-#      Runtime: nodejs14.x
-#      CodeUri: ./lambda
-#      MemorySize: 128
-#      Timeout: 30
-#      Environment:
-#        Variables:
-#          REDIS_HOST: !GetAtt MyElasticacheRedis.RedisEndpointAddress
-#      Events:
-#        MyApi:
-#          Type: Api
-#          Properties:
-#            Path: /myendpoint
-#            Method: get
+  MyLambdaFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs14.x
+      CodeUri: ./lambda
+      MemorySize: 128
+      Timeout: 30
+      VpcConfig:
+        SubnetIds:
+          - !Ref MySubnet
+        SecurityGroupIds:
+          - !Ref MyLambdaSecurityGroup
+      Environment:
+        Variables:
+          REDIS_HOST: !GetAtt MyElasticacheRedis.RedisEndpointAddress
+      Events:
+        MyApi:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: any
+
+  MyLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Lambda function"
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref MySecurityGroup
 
   MyVPC:
     Type: AWS::EC2::VPC
@@ -34,7 +50,7 @@ Resources:
   MyElasticacheSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
     Properties:
-      Description: Subnet group for ElastiCache
+      Description: "Subnet group for ElastiCache"
       SubnetIds:
         - !Ref MySubnet
 
@@ -46,18 +62,16 @@ Resources:
       NumCacheNodes: 1
       Port: 6379
       VpcSecurityGroupIds:
-        - !GetAtt MySecurityGroup.GroupId
+        - !Ref MySecurityGroup
       CacheSubnetGroupName: !Ref MyElasticacheSubnetGroup
 
   MySecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for Lambda function
+      GroupDescription: "Security group for ElastiCache"
       VpcId: !Ref MyVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 6379
           ToPort: 6379
-          CidrIp: 0.0.0.0/0
-
-
+          SourceSecurityGroupId: !Ref MyLambdaSecurityGroup
