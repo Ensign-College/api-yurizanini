@@ -1,87 +1,116 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+
 Resources:
-  MyLambdaFunction:
+  ApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: index.handler
+      CodeUri: .
+      Handler: index.ordersHandler
       Runtime: nodejs20.x
-      CodeUri: MyLambdaFunction
-      MemorySize: 128
-      Timeout: 30
-      VpcConfig:
-        SubnetIds:
-        - Ref: MySubnet
-        SecurityGroupIds:
-        - Ref: MyLambdaSecurityGroup
-      Environment:
-        Variables:
-          REDIS_HOST:
-            Fn::GetAtt:
-            - MyElasticacheRedis
-            - RedisEndpoint.Address
       Events:
-        OrdersPost:
+        ApiEvent:
           Type: Api
           Properties:
             Path: /orders
             Method: post
-        OrdersGet:
-          Type: Api
-          Properties:
-            Path: /orders/{orderId}
-            Method: get
-        OrderItemsPost:
+
+  OrderItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: index.orderItemsHandler
+      Runtime: nodejs20.x
+      Events:
+        OrderItemsApiEvent:
           Type: Api
           Properties:
             Path: /orderItems
             Method: post
-        OrderItemsGet:
+
+  OrdersByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: index.ordersByIdHandler
+      Runtime: nodejs20.x
+      Events:
+        OrdersByIdApiEvent:
           Type: Api
           Properties:
-            Path: /orderItems/{orderItemId}
+            Path: /orders/{orderId}
             Method: get
-    Metadata:
-      SamResourceId: MyLambdaFunction
-  MyLambdaSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+
+  BoxesFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      GroupDescription: Security group for Lambda function
-      VpcId:
-        Ref: MyVPC
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 6379
-        ToPort: 6379
-        SourceSecurityGroupId:
-          Ref: MySecurityGroup
+      CodeUri: .
+      Handler: index.boxesHandler
+      Runtime: nodejs20.x
+      Events:
+        BoxesApiEvent:
+          Type: Api
+          Properties:
+            Path: /boxes
+            Method: get
+
+
+
+  # # Add IAM roles with required tag permissions
+  # OrderItemsFunctionRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: MyOrderItemsFunctionRole    
+  #     AssumeRolePolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: lambda.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  #     Tags:
+  #       - Key: MyTag
+  #         Value: MyValue
+
+
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+
+  MySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.0.0/24
+
   MyElasticacheSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
     Properties:
       Description: Subnet group for ElastiCache
       SubnetIds:
-      - subnet-02c217f126c0ce1d5
+        - subnet-02c217f126c0ce1d5
+
   MyElasticacheRedis:
-    Type: AWS::ElastiCache::CacheCluster
+    Type: 'AWS::ElastiCache::CacheCluster'
     Properties:
       CacheNodeType: cache.t2.micro
       Engine: redis
       NumCacheNodes: 1
       Port: 6379
       VpcSecurityGroupIds:
-      - Fn::GetAtt:
-        - MySecurityGroup
-        - GroupId
-      CacheSubnetGroupName:
-        Ref: MyElasticacheSubnetGroup
+        - !GetAtt MySecurityGroup.GroupId
+      CacheSubnetGroupName: !Ref MyElasticacheSubnetGroup
+
   MySecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for ElastiCache
+      GroupDescription: Security group for Lambda function
       VpcId: vpc-066e6a637e37f2752
       SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 6379
-        ToPort: 6379
-        SourceSecurityGroupId:
-          Ref: MyLambdaSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: 0.0.0.0/0

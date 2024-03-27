@@ -12,7 +12,7 @@ Resources:
       Timeout: 30
       VpcConfig:
         SubnetIds:
-          - !Ref MySubnet
+          - subnet-02c217f126c0ce1d5
         SecurityGroupIds:
           - !Ref MyLambdaSecurityGroup
       Environment:
@@ -44,7 +44,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Security group for Lambda function"
-      VpcId: !Ref MyVPC
+      VpcId: vpc-066e6a637e37f2752
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 6379
@@ -89,4 +89,5 @@ Resources:
         - IpProtocol: tcp
           FromPort: 6379
           ToPort: 6379
+          CidrIp: 0.0.0.0/0
           SourceSecurityGroupId: !Ref MyLambdaSecurityGroup
